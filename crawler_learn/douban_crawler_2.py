@@ -9,12 +9,8 @@ import traceback
 # 构造合理的HTTP请求头， 伪装成浏览器， 绕过反爬虫机制
 user_agent = "Mozilla/5.0 (Windows NT 10.0; WOW64; rv:68.0) Gecko/20100101 Firefox/68.0"
 
-douban_url = 'https://movie.douban.com/top250'
-
-csdn_url = 'https://www.csdn.net/'
-
 """
-面向函数编程
+基础： 爬取二级页面
 """
 
 
@@ -25,35 +21,31 @@ def start_requests(url):
     return r.content
 
 
-# 接收网页源代码解析出需要的信息
-def parse(text):
+# 解析一级网页，获取url列表
+def get_page(text):
     soup = BeautifulSoup(text, 'html.parser')
-    movie_list = soup.find_all('div', attrs={'class': "item"})
-
-    for movie_info in movie_list:
-        try:
-            info = {}
-            title = movie_info.find('span', class_='title').text
-            score = movie_info.find('span', class_='rating_num').text
-            quote = movie_info.find('span', class_='inq').text
-            bd = movie_info.find('div', class_='bd')
-            number_text = bd.find_all('span')[-2].text[:-3]
-            info['title'] = title
-            info['score'] = score
-            info['quote'] = quote
-            info['number'] = number_text
-            result_list.append(info)
-        except Exception as e:
-            print('\n')
-            traceback.print_exc()
-            print(movie_info)
-            continue
+    movies = soup.find_all('div', class_='info')
+    pages = []
+    for movie in movies:
+        url = movie.find('div', class_='hd').a['href']
+        pages.append(url)
+    return pages
 
 
-# 将数据写入json文件
+# 解析二级网页，获取信息
+def parse_page(text):
+    soup = BeautifulSoup(text, 'html.parser')
+    mydict = {}
+    mydict['title'] = soup.find('span', property='v:itemreviewed').text
+    mydict['duration'] = soup.find('span', property='v:runtime').text
+    mydict['time'] = soup.find('span', property='v:initialReleaseDate').text
+    return mydict
+
+
+# 将数据读取到json文件中
 def write_json(result):
     s = json.dumps(result, indent=4, ensure_ascii=False)
-    with open('movies_250.json', 'w', encoding='utf-8') as f:
+    with open('movies.json', 'w', encoding='utf-8') as f:
         f.write(s)
 
 
@@ -71,15 +63,18 @@ def json_to_excel():
 
 
 def main():
-    for i in range(10):
+    for i in range(7, 9):
         url = 'https://movie.douban.com/top250?start={}&filter='.format(i * 25)
         text = start_requests(url)
-        parse(text)
-        print('第 {} 页抓取完毕'.format(i+1))
-    write_json(result_list)
+        pageurls = get_page(text)  # 解析一级页面
+        for pageurl in pageurls:  # 解析二级页面
+            page = start_requests(pageurl)
+            mydict = parse_page(page)
+            result_list.append(mydict)
+    write_json(result_list)  # 所有电影都存进去之后一起输出到文件
+    json_to_excel()
 
 
 if __name__ == '__main__':
     result_list = []
-
     main()
