@@ -81,6 +81,5 @@ class Doubantop(object):
 
 
 if __name__ == '__main__':
-
     douban = Doubantop()
     douban.start()
