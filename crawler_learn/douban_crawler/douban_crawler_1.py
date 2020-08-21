@@ -79,7 +79,13 @@ def main():
     write_json(result_list)
 
 
+def test():
+    url = 'https://movie.douban.com/top250?start={}&filter='.format(25)
+    r = requests.get(url, headers={'User-Agent': user_agent})
+    print(r.text)
+
+
 if __name__ == '__main__':
     result_list = []
 
-    main()
+    test()
